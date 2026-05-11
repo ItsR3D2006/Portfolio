@@ -1,0 +1,410 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Quantico:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Quantico:wght@700&display=swap" rel="stylesheet">
+<style>
+  body {
+    font-family: 'Quantico', sans-serif;
+    background: #0A0A0A;
+    color: #c4c4c4;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  #gameContainer {
+    background: #1E1E1E;
+    border: 2px solid #E70012;
+    border-radius: 10px;
+    padding: 25px;
+  }
+
+  #gameTitle {
+    color: #E8E8E8;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 0px;
+    text-transform: uppercase;
+  }
+  
+  #output {
+    white-space: pre-wrap;
+    margin-bottom: 20px;
+    height: 400px; /* Locked height so it never stretches */
+    overflow-y: auto;
+    padding: 15px;
+    background: #000;
+    border: 1px solid #98262E;
+    border-radius: 5px;
+    font-family: 'Quantico', sans-serif;
+  }
+  
+  #inputContainer {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  
+  #userInput {
+    flex: 1;
+    background: #0A0A0A;
+    color: #ffffff;
+    border: 2px solid #F51426;
+    padding: 12px;
+    font-family: 'Quantico', sans-serif;
+    font-size: 16px;
+    border-radius: 5px;
+  }
+  
+  #userInput:focus {
+    outline: none;
+  }
+
+  #userInput::placeholder {
+    color: #E8E8E8;
+  }
+  
+  .prompt { color: #ffffff; }
+  .error { color: #98262E; }
+  .success { color: #F51426; }
+  .header { color: #ffffff; }
+</style>
+</head>
+<body>
+
+<div id="gameContainer">
+  <div id="gameTitle">Alec's Roulette Game</div>
+  <div id="output"></div>
+  <div id="inputContainer">
+    <input type="text" id="userInput" placeholder="Type your answer here..." autofocus>
+  </div>
+</div>
+
+<script>
+// Made By Alec Amador
+// 4/20/26
+// redid some of the java code here, and thankfully it works, even with the new additions
+
+class AlecsRouletteGame {
+    constructor() {
+        this.balance = 200;
+        this.initialBalance = 200;
+        this.wheel = Array.from({ length: 37 }, (_, i) => i);
+        this.winStreak = 0;
+        this.loseStreak = 0;
+        this.totalLosses = 0;
+        this.currentTarget = 250;
+        this.gameMode = 1;
+        this.outputElement = document.getElementById('output');
+        this.inputElement = document.getElementById('userInput');
+        this.waitingForInput = false;
+        this.inputResolver = null;
+        this.inputValidator = null;
+        
+        this.inputElement.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && this.waitingForInput) {
+                this.handleInput();
+            }
+        });
+    }
+
+    print(text, type = '') {
+        const line = document.createElement('div');
+        if (type) line.className = type;
+        line.textContent = text;
+        this.outputElement.appendChild(line);
+        this.outputElement.scrollTop = this.outputElement.scrollHeight;
+    }
+
+    async getUserInput(prompt, validator) {
+        return new Promise((resolve) => {
+            this.print(prompt, 'prompt');
+            this.waitingForInput = true;
+            this.inputResolver = resolve;
+            this.inputValidator = validator;
+            this.inputElement.disabled = false;
+            this.inputElement.focus();
+        });
+    }
+
+    handleInput() {
+        const value = this.inputElement.value.trim();
+        this.inputElement.value = '';
+        
+        if (value.toLowerCase() === 'restart') {
+            this.print('> restart');
+            this.print('Restarting system...', 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 800);
+            return;
+        }
+
+        if (value.toLowerCase() === 'help') {
+            this.print('> help');
+            this.print("\n=== RULES & COMMANDS ===", 'header');
+            this.print("Objective: Beat the target to advance or cash out.");
+            this.print("\nBets & Payouts:");
+            this.print(" 1) Single (35x): Pick an exact number (0-36)");
+            this.print(" 2) Even/Odd (1x): Pick Even (E) or Odd (O)");
+            this.print(" 3) Range (1x): Pick Low (1-18) or High (19-36)");
+            this.print(" 4) Dozen (2x): Pick 1st, 2nd, or 3rd dozen");
+            this.print("\nStreaks & Penalties:");
+            this.print(" - Win Streak: 3+ wins adds a +$100 bonus per win but increases target by $100");
+            this.print(" - Classic Losses: 3 losses IN A ROW equals Game Over");
+            this.print(" - Hardcore Losses: 3 TOTAL losses equals Game Over");
+            this.print("\nCommands:\nType 'restart' to restart the entire game from the begining or 'help' to see this menu again. To continute playing the game, please refer to the last promt.\n");
+            return;
+        }
+        
+        if (this.inputValidator) {
+            const result = this.inputValidator(value);
+            if (result.valid) {
+                this.print('> ' + value);
+                this.waitingForInput = false;
+                this.inputElement.disabled = true;
+                this.inputResolver(result.value);
+            } else {
+                this.print(result.error, 'error');
+            }
+        }
+    }
+
+    async play() {
+        this.print("ALEC'S ROULETTE GAME ", 'header');
+        this.print("First Target: $" + this.currentTarget);
+        this.print("- 3+ wins -> +$100 per win to target");
+        this.print("- Type 'help' for full rules or 'restart' to start over\n");
+
+        this.print("\nSelect Game Mode:");
+        this.print("1) Classic: Next target increases by exactly $100 each round, 3 losses IN A ROW equals Game Over");
+        this.print("2) Harder: Next target is always $100 above balance each round, 3 TOTAL losses equals Game Over");
+        
+        let modeChoice = await this.getUserInput("Choose Mode (1 or 2): ", (val) => {
+            const num = parseInt(val);
+            if (num === 1 || num === 2) return { valid: true, value: num };
+            return { valid: false, error: "Invalid input. Enter 1 or 2." };
+        });
+        this.gameMode = modeChoice;
+
+        while (this.balance > 0 && ((this.gameMode === 1 && this.loseStreak < 3) || (this.gameMode === 2 && this.totalLosses < 3))) {
+            
+            if (this.balance >= this.currentTarget) {
+                const currentProfit = this.balance - this.initialBalance;
+                
+                let nextTarget = (this.gameMode === 1) ? this.currentTarget + 100 : this.balance + 100;
+
+                this.print("\n TARGET REACHED! ", 'header');
+                this.print("1) Continue to next target ($" + nextTarget + ")");
+                this.print("2) Cash Out ($" + currentProfit + " profit)");
+                
+                let choice = await this.getUserInput("Choose: ", (val) => {
+                    const num = parseInt(val);
+                    if (num === 1 || num === 2) return { valid: true, value: num };
+                    return { valid: false, error: "Invalid input. Enter 1 or 2." };
+                });
+
+                if (choice === 2) {
+		    this.print("Profit: $" + currentProfit, 'success');
+                    this.print("CASHED OUT WITH $" + this.balance, 'success');
+		    this.print("GAMES OVER, YOU WON, GO HOME", 'success');
+                    this.endGamePrompt();
+                    return;
+                }
+                
+                this.currentTarget = nextTarget;
+            }
+
+            this.showStatus();
+
+            let bet = await this.getUserInput("Bet amount: $", (val) => {
+                const num = parseInt(val);
+                if (!isNaN(num) && num >= 1 && num <= this.balance) return { valid: true, value: num };
+                return { valid: false, error: "Invalid amount. Enter 1-" + this.balance + "." };
+            });
+
+            this.print("\n1-Single(35x)");
+            this.print("2-Even/Odd(1x)");
+            this.print("3-Range(1x)");
+            this.print("4-Dozen(2x)");
+            
+            let betType = await this.getUserInput("Choice: ", (val) => {
+                const num = parseInt(val);
+                if (num >= 1 && num <= 4) return { valid: true, value: num };
+                return { valid: false, error: "Invalid choice. Enter 1-4." };
+            });
+
+            let prediction = await this.getPrediction(betType);
+            let result = await this.spinWheel();
+
+            this.updateGameState(betType, bet, prediction, result);
+        }
+
+        this.showFinalResult();
+        this.endGamePrompt();
+    }
+    
+    endGamePrompt() {
+        this.print("\nType 'restart' to try again.");
+        this.waitingForInput = true;
+        this.inputValidator = () => ({valid: false, error: "Game over. Type 'restart' to play again."});
+        this.inputElement.disabled = false;
+        this.inputElement.focus();
+    }
+
+    showStatus() {
+        this.print("\n----------------------");
+        this.print("Current Target: $" + this.currentTarget);
+        this.print("Balance: $" + this.balance);
+        
+        let lossText = this.gameMode === 1 ? "Lose Streak: " + this.loseStreak + "/3" : "Total Losses: " + this.totalLosses + "/3";
+        this.print("Win Streak: " + this.winStreak + " | " + lossText);
+        
+        if (this.winStreak >= 3) {
+            this.print("Next Win Bonus: +$" + ((this.winStreak + 1) * 100));
+        }
+        this.print("----------------------");
+    }
+
+    async getPrediction(betType) {
+        switch (betType) {
+            case 1:
+                return await this.getUserInput("Number (0-36): ", (val) => {
+                    const num = parseInt(val);
+                    if (!isNaN(num) && num >= 0 && num <= 36) return { valid: true, value: num };
+                    return { valid: false, error: "Invalid number. Enter 0-36." };
+                });
+            case 2:
+                return await this.getUserInput("Even/Odd (E/O): ", (val) => {
+                    const choice = val.toUpperCase();
+                    if (choice === "E") return { valid: true, value: 0 };
+                    if (choice === "O") return { valid: true, value: 1 };
+                    return { valid: false, error: "Invalid choice. Enter E or O." };
+                });
+            case 3:
+                return await this.getUserInput("Range (1-18 [1] or 19-36 [2]): ", (val) => {
+                    const num = parseInt(val);
+                    if (num === 1) return { valid: true, value: 0 };
+                    if (num === 2) return { valid: true, value: 1 };
+                    return { valid: false, error: "Invalid choice. Enter 1 or 2." };
+                });
+            case 4:
+                return await this.getUserInput("Dozen (1/2/3): ", (val) => {
+                    const num = parseInt(val);
+                    if (num >= 1 && num <= 3) return { valid: true, value: num };
+                    return { valid: false, error: "Invalid dozen. Enter 1, 2, or 3." };
+                });
+            default:
+                return 0;
+        }
+    }
+
+    async spinWheel() {
+        this.print("\nSpinning the wheel...");
+        const delays = [300, 250, 200, 150, 100, 80, 60, 40];
+        let spinCount = 0;
+        
+        while (spinCount < 8) {
+            await this.sleep(delays[spinCount]);
+            this.print("Rolling... " + this.wheel[Math.floor(Math.random() * 37)]);
+            spinCount++;
+        }
+        
+        await this.sleep(500);
+        this.print("Landed on...");
+        await this.sleep(500);
+        
+        const result = this.wheel[Math.floor(Math.random() * 37)];
+        this.print(">>> " + result + " <<<", 'header');
+        await this.sleep(500);
+        
+        return result;
+    }
+
+    updateGameState(betType, bet, prediction, result) {
+        let won = false;
+        let payoutMultiplier = 0;
+
+        switch (betType) {
+            case 1:
+                if (result === prediction) {
+                    won = true;
+                    payoutMultiplier = 35;
+                }
+                break;
+            case 2:
+                if (result !== 0) {
+                    let isEven = result % 2 === 0 ? 0 : 1;
+                    if (isEven === prediction) {
+                        won = true;
+                        payoutMultiplier = 1;
+                    }
+                }
+                break;
+            case 3:
+                if (result !== 0) {
+                    let inLowRange = result >= 1 && result <= 18 ? 0 : 1;
+                    if (inLowRange === prediction) {
+                        won = true;
+                        payoutMultiplier = 1;
+                    }
+                }
+                break;
+            case 4:
+                if (result !== 0) {
+                    let dozen = Math.ceil(result / 12);
+                    if (dozen === prediction) {
+                        won = true;
+                        payoutMultiplier = 2;
+                    }
+                }
+                break;
+        }
+
+        if (won) {
+            let bonus = 0;
+            if (this.winStreak >= 3) {
+                bonus = (this.winStreak + 1) * 100;
+                this.currentTarget += 100;
+            }
+            let winnings = bet * payoutMultiplier + bonus;
+            this.balance += winnings;
+            this.winStreak++;
+            this.loseStreak = 0;
+            this.print("You won! Result: " + result + ". Winnings: $" + winnings, 'success');
+        } else {
+            this.balance -= bet;
+            this.winStreak = 0;
+            this.loseStreak++;
+            this.totalLosses++;
+            this.print("You lost! Result: " + result + ". Lost: $" + bet, 'error');
+        }
+    }
+
+    showFinalResult() {
+        if (this.gameMode === 1 && this.loseStreak >= 3) {
+            this.print("\nGAME OVER - 3 losses in a row", 'error');
+        } else if (this.gameMode === 2 && this.totalLosses >= 3) {
+            this.print("\nGAME OVER - 3 total losses", 'error');
+        } else if (this.balance <= 0) {
+            this.print("\nGAME OVER - Balance depleted", 'error');
+        }
+        this.print("Final Balance: $" + this.balance, 'error');
+        this.print("Profit: $" + (this.balance - this.initialBalance), 'error');
+    }
+
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+
+const game = new AlecsRouletteGame();
+game.play();
+</script>
+
+</body>
+</html>
