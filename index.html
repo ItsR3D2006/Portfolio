@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alec Amadors Portfolio Website</title>
+  <title>Alec Amador - Website</title>
   <link href="https://fonts.googleapis.com/css2?family=Quantico:wght@400;700&display=swap" rel="stylesheet" />
   <style>
     @font-face {
@@ -818,7 +818,7 @@
         padding: clamp(16px, 2.5vw, 36px);
         width: 100%;
         max-width: 1200px;
-        max-height: 90vh;
+        height: 90vh; /* Locked height so it does not change size */
         overflow-y: auto;
         position: relative;
         display: flex;
@@ -843,6 +843,7 @@
         justify-content: space-between;
         border-bottom: 2px solid var(--group-white);
         padding-bottom: 10px;
+        flex-shrink: 0;
     }
 
     .modal-header h2 {
@@ -905,6 +906,7 @@
         gap: 4px;
         border-bottom: 2px solid var(--ire-maroon);
         padding-bottom: 4px;
+        flex-shrink: 0;
     }
 
     .modal-tab-strip:empty { display: none; }
@@ -939,7 +941,8 @@
 
     .modal-preview-pane {
         width: 100%;
-        height: clamp(350px, 60vh, 850px);
+        flex: 1; /* Automatically absorbs available space */
+        min-height: 350px; /* Prevents it from shrinking too much */
         background-color: var(--shujin-black);
         border: 2px solid var(--ire-maroon);
         display: flex;
@@ -1013,6 +1016,7 @@
         margin: 0;
         line-height: 1.6;
         font-size: clamp(0.85rem, 1.3vw, 1.05rem);
+        flex-shrink: 0;
     }
 
     .modal-references {
@@ -1022,6 +1026,7 @@
         opacity: 0.8;
         font-family: var(--font-secondary);
         display: none;
+        flex-shrink: 0;
     }
 
     .modal-references strong {
@@ -1037,6 +1042,7 @@
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+        flex-shrink: 0;
     }
 
     .chip {
@@ -2065,7 +2071,7 @@
     }
 
     /* =========================================================
-       RENDER: PROJECTS FILTERS
+       PROJECTS FILTERS
        ========================================================= */
     function renderFilterGroups() {
       const wrap = $("projects-filters");
